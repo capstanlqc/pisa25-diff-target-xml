@@ -36,7 +36,7 @@ If any changes found between the two target versions, add a entry of the diff re
     "dmp_diff": [(0, "Les chauves-souris "), (-1, "ém"), (0, "e"), (-1, "tt"), (1, "nvoi"), (0, "ent des ondes sonores puis en écoutent les échos pour pouvoir localiser des objets ou de la nourriture.")], 
     "html_diff": "Les chauves-souris <del>émettent</del><ins>envoient</ins> des ondes sonores puis en écoutent les échos pour pouvoir localiser des objets ou de la nourriture.", 
     "file": "PISA_2025FT_SCI_CACERS001-BatEcholocation.xml"
-}, 
+}
 ```
 
 ## To run the backend code
