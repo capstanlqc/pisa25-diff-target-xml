@@ -1,10 +1,10 @@
 # PISA 2025 -- diff tool
 
-This is a draft proposal for a diff utility to compare between different steps in a translation workflow.
+This is a draft proposal for a diff utility to compare the output of different steps in a translation workflow.
 
 The Python code included can be used as pseudo-code to understand the proposed logic but should be working well when executed.
 
-## To run this code
+## To run the backend code
 
 To running the code, you need to clone the repository, create a virtual environment and install dependencies in it. That only needs to be done once. 
 
