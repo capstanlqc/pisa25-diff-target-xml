@@ -12,40 +12,41 @@ When your virtual environment is created, when the you can simply activate it be
 
 ### Steps: 
 
-1. Clone this repo and change directory to it
+Clone this repo and change directory to it
 
-    ```
-    gh repo clone capstanlqc/pisa25-diff-target-xml
-    cd pisa25-diff-target-xml
-    ```
+```
+gh repo clone capstanlqc/pisa25-diff-target-xml
+cd pisa25-diff-target-xml
+```
 
-2. Install a virtual environment in the root folder of the repo (only once)
+Install a virtual environment in the root folder of the repo (only once)
 
-    ```
-    python -m venv venv
-    ```
+```
+python -m venv venv
+```
 
-3. Activate the virtual environment
+Activate the virtual environment
 
-    ```
-    source venv/bin/activate
-    ```
+```
+source venv/bin/activate
+```
 
-    This is needed every time you need to run the code.
+This is needed every time you need to run the code.
 
-4. Install dependencies (only once)
+Install dependencies (only once)
 
-    ```
-    pip install -r requirements.txt
-    ```
-5. Now you can run the code:
+```
+pip install -r requirements.txt
+```
 
-    ```
-    python3 code/main.py
-    ```
+Now you can run the code:
 
-6. You may exit the virtual environment when you're done running the code:
+```
+python3 code/main.py
+```
 
-    ```
-    deactivate
-    ```
+You may exit the virtual environment when you're done running the code:
+
+```
+deactivate
+```
