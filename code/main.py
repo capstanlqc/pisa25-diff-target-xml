@@ -97,5 +97,5 @@ if __name__ == "__main__":
 			if key in target_edit_strings.keys() and key in target_orig_strings.keys()
 		]
 
-		pp(result) # pretty print
-		# print(result)
+		# pp(result) # pretty print
+		print(result)
