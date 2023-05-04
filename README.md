@@ -60,14 +60,10 @@ Install a virtual environment in the root folder of the repo (only once)
 python -m venv venv
 ```
 
-Activate the virtual environment
+Activate the virtual environment (before every timem you run the script)
 
 ```
 source venv/bin/activate
-```
-
-This is needed every time you need to run the code.
-details 
 ```
 
 You may exit the virtual environment when you're done running the code:
