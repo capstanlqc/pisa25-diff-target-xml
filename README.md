@@ -66,6 +66,12 @@ Activate the virtual environment (before every time you run the script):
 source venv/bin/activate
 ```
 
+Install all dependencies in the virtual environment: 
+
+```
+pip install -r requirements.txt
+```
+
 Run the code: 
 
 ```
