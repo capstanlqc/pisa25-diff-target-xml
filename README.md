@@ -83,3 +83,10 @@ You may exit the virtual environment when you're done running the code:
 ```
 deactivate
 ```
+
+## Backlog
+
+To do:
+
+- Add edit distance info
+- Save report to database
