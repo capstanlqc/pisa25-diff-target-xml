@@ -1,0 +1,4 @@
+https://www.qloudx.com/use-git-remote-codecommit-to-clone-aws-codecommit-repositories-without-creating-iam-users/
+https://docs.aws.amazon.com/codecommit/latest/userguide/setting-up-git-remote-codecommit.html
+https://aws.amazon.com/blogs/devops/introducing-git-credentials-a-simple-way-to-connect-to-aws-codecommit-repositories-using-a-static-user-name-and-password/
+
