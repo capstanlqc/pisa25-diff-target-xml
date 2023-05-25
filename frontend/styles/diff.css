@@ -1,0 +1,11 @@
+del {
+    text-decoration: line-through;
+    color:#ff8000; /* orange, previously: red; */
+    background-color:#ffe6e6;
+}
+
+ins {
+    text-decoration: underline;
+    color:purple; /* purple, previously: green */
+    background-color:#e6ffe6;
+}
