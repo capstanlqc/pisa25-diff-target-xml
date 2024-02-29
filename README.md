@@ -90,3 +90,7 @@ To do:
 
 - Add edit distance info
 - Save report to database
+- Extract input arguments so that they must be provided when calling up the script
+- Extract node and its key attribute and file extension to be extracted as input argument 
+- Put all the above in a config file (yaml, or excel)
+- Provide paths as arguments

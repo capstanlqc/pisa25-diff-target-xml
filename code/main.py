@@ -5,10 +5,11 @@ from xml.dom.minidom import parse, parseString
 import diff_match_patch as dmp_module
 from html_diff import diff
 from Levenshtein import distance as levenshtein_distance
+from rich import print as print
 
 # constants
 
-locale = "fr-ZZ"
+locale = "ar-PS"
 
 namespaces = {
 	"": "http://www.imsglobal.org/xsd/imsqti_v2p2",
@@ -48,54 +49,62 @@ def get_key_label_pairs(fpath):
 def check_key_uniqueness(keys):
 	pass
 
-
-
 if __name__ == "__main__":
 
 	# input arguments
-	omtprj0_dpath = "repos/pisa_2025ft_translation_common" # @todo: abs path
-	omtprj1_dpath = "repos/pisa_2025ft_translation_fr-ZZ_reconciliation"
-	omtprj2_dpath = "repos/pisa_2025ft_translation_fr-ZZ_lead-reconciliation-review"
-	batch = "03_COS_SCI1_N"
+	orig_dname = "pisa_2025ft_translation_common" # @todo: abs path
+	xlat_dname = "pisa_2025ft_translation_ar-PS_post-verification-review"
+	edit_dname = "pisa_2025ft_translation_ar-PS_final-check"
 
-	source_dpath = os.path.join(omtprj0_dpath, "source", batch)
-	tgt_orig_dpath = os.path.join(omtprj1_dpath, "target", batch)
-	tgt_edit_dpath = os.path.join(omtprj2_dpath, "target", batch)
+	batches = ["03_COS_SCI-C_N", "06_COS_LDW_N"]
+	parent_dpath = ["/", "home", "souto", "Repos", "ACER-PISA-2025-FT"]
 
-	source_files = [f for f in os.listdir(source_dpath) if f.endswith(".xml")]
+	for batch in batches:
 
-	for file in source_files:
+		source_dpath      = os.path.join(*parent_dpath, orig_dname, "source", batch)
+		target_orig_dpath = os.path.join(*parent_dpath, xlat_dname, "target", batch)
+		target_edit_dpath = os.path.join(*parent_dpath, edit_dname, "target", batch)
 
-		source_fpath 	  	= os.path.join(source_dpath, file)
-		target_orig_fpath	= os.path.join(tgt_orig_dpath, file.replace(".xml", f"_{locale}.xml"))
-		target_edit_fpath 	= os.path.join(tgt_edit_dpath, file.replace(".xml", f"_{locale}.xml"))
+		if not os.path.exists(source_dpath):
+			print(f"{batch=} not found")
+			continue
 
-		source_strings 		= get_key_label_pairs(source_fpath)
-		target_orig_strings = get_key_label_pairs(target_orig_fpath)
-		target_edit_strings = get_key_label_pairs(target_edit_fpath)
+		source_files = [f for f in os.listdir(source_dpath) if f.endswith(".xml")]
 
-		# shall we check that keys are unique?
-		keys = source_strings.keys()
+		for file in source_files:
 
-		dmp = dmp_module.diff_match_patch()
-		#diff = dmp.diff_main(target_orig_strings[key], target_edit_strings[key])
-		# Result: [(-1, "Hell"), (1, "G"), (0, "o"), (1, "odbye"), (0, " World.")]
-		# dmp.diff_cleanupSemantic(diff)
-		# Result: [(-1, "Hello"), (1, "Goodbye"), (0, " World.")]
-		#print(diff)
+			source_fpath 	  	= os.path.join(source_dpath, file)
+			target_orig_fpath	= os.path.join(target_orig_dpath, file.replace(".xml", f"_{locale}.xml"))
+			target_edit_fpath 	= os.path.join(target_edit_dpath, file.replace(".xml", f"_{locale}.xml"))
 
-		result = [
-			{	"key": key,
-				"source_text": source_strings[key],
-				"target_orig": target_orig_strings[key],
-				"target_edit": target_edit_strings[key],
-				"dmp_diff": dmp.diff_main(target_orig_strings[key], target_edit_strings[key]),
-				"html_diff": diff(target_orig_strings[key], target_edit_strings[key]),
-				"file": file
-			}
-			for key in keys
-			if key in target_edit_strings.keys() and key in target_orig_strings.keys()
-		]
+			if not os.path.exists(target_orig_fpath) or not os.path.exists(target_edit_fpath):
+				continue
 
-		# pp(result) # pretty print
-		print(result)
+			source_strings 		= get_key_label_pairs(source_fpath)
+			target_orig_strings = get_key_label_pairs(target_orig_fpath)
+			target_edit_strings = get_key_label_pairs(target_edit_fpath)
+
+			# shall we check that keys are unique?
+			keys = source_strings.keys()
+
+			dmp = dmp_module.diff_match_patch()
+			#diff = dmp.diff_main(target_orig_strings[key], target_edit_strings[key])
+			# Result: [(-1, "Hell"), (1, "G"), (0, "o"), (1, "odbye"), (0, " World.")]
+			# dmp.diff_cleanupSemantic(diff)
+			# Result: [(-1, "Hello"), (1, "Goodbye"), (0, " World.")]
+			#print(diff)
+
+			result = [
+				{	"key": key,
+					"source_text": source_strings[key],
+					"target_orig": target_orig_strings[key],
+					"target_edit": target_edit_strings[key],
+					"dmp_diff": dmp.diff_main(target_orig_strings[key], target_edit_strings[key]),
+					"html_diff": diff(target_orig_strings[key], target_edit_strings[key]),
+					"file": file
+				}
+				for key in keys
+				if key in target_edit_strings.keys() and key in target_orig_strings.keys()
+			]
+
+			print(result)
