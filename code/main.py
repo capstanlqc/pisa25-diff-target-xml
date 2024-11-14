@@ -46,27 +46,51 @@ def get_key_label_pairs(fpath):
     }
 
 
-def is_included(file, key, locale):
+def list_xml_files_in_folder(folder_path):
+    return [f for f in os.listdir(folder_path) if os.path.isfile(os.path.join(folder_path, f)) and f.endswith(".xml")]
 
-    # parse the XML file
-    doc = parse(file)
 
-    # find all <label> elements
-    labels = doc.getElementsByTagName("label")
+def get_labels_metadata(common_repo_dpath, batches: list) -> list:
+
+    labels_metadata = []
+
+    for batch in batches:
+        batch_dpath = os.path.join(common_repo_dpath, "source", batch)
+        for xml_fname in list_xml_files_in_folder(batch_dpath):
+
+            xml_fpath = os.path.join(batch_dpath, xml_fname)
+            doc = parse(xml_fpath)
+            labels = doc.getElementsByTagName("label")
+
+            for label in labels:
+                labels_metadata.append({
+                    "file": f"{batch}/{os.path.basename(xml_fname)}",
+                    "key": label.getAttribute("key"),
+                    "locale_list": label.getAttribute("its:localeFilterList").split(","),
+                    "filter_type": label.getAttribute("its:localeFilterType")
+                })
+
+    return labels_metadata
+
+
+def is_included(batch, file, key, locale):
 
     # iterate through the labels
-    for label in labels:
-        # check if the 'key' attribute matches
-        if label.getAttribute("key") == key:
-            # get the locale filter list and type attributes
-            locale_list = label.getAttribute("its:localeFilterList").split(",")
-            filter_type = label.getAttribute("its:localeFilterType")
+    label = next((entry for entry in labels_metadata if 
+                  entry.get("file") == f"{batch}/{file}" and 
+                  entry.get("key") == key), 
+                None)
 
-            # determine if the locale is included based on the filter type
-            if filter_type == 'include':
-                return locale in locale_list
-            elif filter_type == 'exclude':
-                return locale not in locale_list
+    if label:
+        # get the locale filter list and type attributes
+        locale_list = label["locale_list"]
+        filter_type = label["filter_type"]
+
+        # determine if the locale is included based on the filter type
+        if filter_type == 'include':
+            return locale in locale_list
+        elif filter_type == 'exclude':
+            return locale not in locale_list
 
     # return False if the key is not found
     return False
@@ -74,6 +98,7 @@ def is_included(file, key, locale):
 
 def check_key_uniqueness(keys):
     pass
+
 
 if __name__ == "__main__":
 
@@ -86,6 +111,9 @@ if __name__ == "__main__":
     # parent_dpath = ["/", "home", "souto", "Repos", "ACER-PISA-2025-FT"]
     parent_dpath = "/media/souto/257-FLASH/dev/capstanlqc/pisa25-diff-target-xml/data".split("/")
     parent_dpath[0] = "/"
+
+    # get labels data outside of looping
+    labels_metadata = get_labels_metadata(os.path.join(*parent_dpath, orig_dname), batches)
 
     for batch in batches:
         source_dpath      = os.path.join(*parent_dpath, orig_dname, "source", batch)
@@ -135,7 +163,7 @@ if __name__ == "__main__":
                 # add to results only if there has been a change
                 and target_orig_strings[key] != target_edit_strings[key]
                 # add to results only if the label is included for this locale
-                and is_included(os.path.join(source_dpath, file), key, locale)
+                and is_included(batch, file, key, locale)
             ]
 
             print(result)
