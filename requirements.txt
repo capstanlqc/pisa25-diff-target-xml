@@ -1,3 +1,9 @@
-diff_match_patch==20230430
-html_diff==0.4.1
-python_Levenshtein==0.21.0
+beautifulsoup4==4.12.3
+diff-match-patch==20230430
+html-diff==0.4.1
+markdown-it-py==3.0.0
+mdurl==0.1.2
+Pygments==2.18.0
+rich==13.9.4
+soupsieve==2.6
+# python_Levenshtein==0.21.0
