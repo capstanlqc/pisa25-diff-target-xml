@@ -4,12 +4,12 @@ import os
 from xml.dom.minidom import parse, parseString
 import diff_match_patch as dmp_module
 from html_diff import diff
-from Levenshtein import distance as levenshtein_distance
+# from Levenshtein import distance as levenshtein_distance
 from rich import print as print
 
 # constants
 
-locale = "ar-PS"
+locale = "zh-CN"
 
 namespaces = {
     "": "http://www.imsglobal.org/xsd/imsqti_v2p2",
@@ -46,21 +46,48 @@ def get_key_label_pairs(fpath):
     }
 
 
+def is_included(file, key, locale):
+
+    # parse the XML file
+    doc = parse(file)
+
+    # find all <label> elements
+    labels = doc.getElementsByTagName("label")
+
+    # iterate through the labels
+    for label in labels:
+        # check if the 'key' attribute matches
+        if label.getAttribute("key") == key:
+            # get the locale filter list and type attributes
+            locale_list = label.getAttribute("its:localeFilterList").split(",")
+            filter_type = label.getAttribute("its:localeFilterType")
+
+            # determine if the locale is included based on the filter type
+            if filter_type == 'include':
+                return locale in locale_list
+            elif filter_type == 'exclude':
+                return locale not in locale_list
+
+    # return False if the key is not found
+    return False
+
+
 def check_key_uniqueness(keys):
     pass
 
 if __name__ == "__main__":
 
     # input arguments
-    orig_dname = "pisa_2025ft_translation_common" # @todo: abs path
-    xlat_dname = "pisa_2025ft_translation_ar-PS_post-verification-review"
-    edit_dname = "pisa_2025ft_translation_ar-PS_final-check"
+    orig_dname = "pisa_2025ms_translation_common" # @todo: abs path
+    xlat_dname = "pisa_2025ms_translation_zh-CN_qqs-prepare-files"
+    edit_dname = "pisa_2025ms_translation_zh-CN_qqs-verification"
 
-    batches = ["03_COS_SCI-C_N", "06_COS_LDW_N"]
-    parent_dpath = ["/", "home", "souto", "Repos", "ACER-PISA-2025-FT"]
+    batches = ["04_QQS_N"]
+    # parent_dpath = ["/", "home", "souto", "Repos", "ACER-PISA-2025-FT"]
+    parent_dpath = "/media/souto/257-FLASH/dev/capstanlqc/pisa25-diff-target-xml/data".split("/")
+    parent_dpath[0] = "/"
 
     for batch in batches:
-
         source_dpath      = os.path.join(*parent_dpath, orig_dname, "source", batch)
         target_orig_dpath = os.path.join(*parent_dpath, xlat_dname, "target", batch)
         target_edit_dpath = os.path.join(*parent_dpath, edit_dname, "target", batch)
@@ -105,6 +132,10 @@ if __name__ == "__main__":
                 }
                 for key in keys
                 if key in target_edit_strings.keys() and key in target_orig_strings.keys()
+                # add to results only if there has been a change
+                and target_orig_strings[key] != target_edit_strings[key]
+                # add to results only if the label is included for this locale
+                and is_included(os.path.join(source_dpath, file), key, locale)
             ]
 
             print(result)
