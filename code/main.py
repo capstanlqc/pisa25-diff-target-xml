@@ -1,15 +1,48 @@
+import pandas as pd
+from pathlib import Path
+from typing import List, Tuple, Dict
 from pprint import pprint as pp
 import os
 # from xml.dom.pulldom import parse
 from xml.dom.minidom import parse, parseString
+from lxml import etree
 import diff_match_patch as dmp_module
 from html_diff import diff
 # from Levenshtein import distance as levenshtein_distance
-from rich import print as print
+# from rich import print as print
+from openpyxl import load_workbook
+from openpyxl.cell.rich_text import CellRichText, TextBlock
+from openpyxl.cell.text import InlineFont
+from bs4 import BeautifulSoup
+
 
 # constants
 
-locale = "zh-CN"
+def export_locale_to_excel(data: Dict, locale: str, output_path: str = None):
+    if output_path is None:
+        output_path = f"{locale}.xlsx"
+
+    batches = list(data.keys())
+
+    with pd.ExcelWriter(output_path, engine="openpyxl") as writer:
+        for batch, entries in data.items():
+
+            # convert list of dicts into DataFrame
+            df = pd.DataFrame(entries)
+
+            # convert lists (like dmp_diff) to strings for readability
+            if "dmp_diff" in df.columns:
+                df["dmp_diff"] = df["dmp_diff"].astype(str)
+
+            # clean sheet name to max 31 chars
+            safe_name = batch[:31]
+
+            # Write sheet
+            df.to_excel(writer, sheet_name=safe_name, index=False)
+
+    print(f"Saved: {output_path}")
+
+
 
 namespaces = {
     "": "http://www.imsglobal.org/xsd/imsqti_v2p2",
@@ -32,25 +65,58 @@ def calculate_levenshtein_distance(str_1, str_2):
     pass
 
 
-def get_key_label_pairs(fpath):
-    """ Build a list of key-value dictionaries """
+def get_key_label_pairs(fpath: Path):
+    """ Build a dictionary of key-value pairs from XML using lxml. """
 
-    document = parse(fpath) # xml.dom.minidom method
+    if not fpath.is_file():
+        raise FileNotFoundError(f"{fpath} does not exist")
 
-    # getElementsByTagNameNS if namespaces
-    node_list = document.getElementsByTagName("text")
+    # lxml parser that recovers from undefined entities
+    parser = etree.XMLParser(recover=True)
+    tree = etree.parse(fpath, parser)
+    root = tree.getroot()
 
-    return {
-        node.parentNode.getAttribute("key"): "".join(child.toxml()
-        for child in node.childNodes) for node in node_list
-    }
+    # find all <text> elements
+    node_list = root.findall(".//text")
+
+    result = {}
+    for i, node in enumerate(node_list):
+        parent = node.getparent()
+        key_attr = parent.get("key") if parent is not None else f"unknown_{i}"
+        key = f"{key_attr}/{i}"
+
+        # get all text content, join into a single string
+        text_content = "".join(node.itertext())
+        result[key] = text_content
+    # for i, node in enumerate(node_list):
+    #     parent = node.getparent()
+    #     key_attr = parent.get("key")
+    #     key = f"{key_attr}/{i}"
+
+    #     # get inner XML of node (children only)
+    #     parts = []
+
+    #     if node.text:
+    #         parts.append(node.text)
+
+    #     for child in node:
+    #         parts.append(etree.tostring(child, encoding="unicode"))
+
+    #         # include tail text after child
+    #         if child.tail:
+    #             parts.append(child.tail)
+
+    #     inner_xml = "".join(parts)
+    #     result[key] = inner_xml
+
+    return result
 
 
 def list_xml_files_in_folder(folder_path):
     return [f for f in os.listdir(folder_path) if os.path.isfile(os.path.join(folder_path, f)) and f.endswith(".xml")]
 
 
-def get_labels_metadata(common_repo_dpath, batches: list) -> list:
+def get_labels_metadata(common_repo_dpath: Path, batches: List[str]) -> list:
 
     labels_metadata = []
 
@@ -100,70 +166,156 @@ def check_key_uniqueness(keys):
     pass
 
 
-if __name__ == "__main__":
 
-    # input arguments
-    orig_dname = "pisa_2025ms_translation_common" # @todo: abs path
-    xlat_dname = "pisa_2025ms_translation_zh-CN_qqs-prepare-files"
-    edit_dname = "pisa_2025ms_translation_zh-CN_qqs-verification"
+def html_to_runs(html_text):
+    """Parse <del> and <ins> into runs for openpyxl rich text."""
+    runs = []
+    soup = BeautifulSoup(html_text, "html.parser")
 
-    batches = ["04_QQS_N"]
-    # parent_dpath = ["/", "home", "souto", "Repos", "ACER-PISA-2025-FT"]
-    parent_dpath = "/media/souto/257-FLASH/dev/capstanlqc/pisa25-diff-target-xml/data".split("/")
-    parent_dpath[0] = "/"
-
-    # get labels data outside of looping
-    labels_metadata = get_labels_metadata(os.path.join(*parent_dpath, orig_dname), batches)
-
-    for batch in batches:
-        source_dpath      = os.path.join(*parent_dpath, orig_dname, "source", batch)
-        target_orig_dpath = os.path.join(*parent_dpath, xlat_dname, "target", batch)
-        target_edit_dpath = os.path.join(*parent_dpath, edit_dname, "target", batch)
-
-        if not os.path.exists(source_dpath):
-            print(f"{batch=} not found")
-            continue
-
-        source_files = [f for f in os.listdir(source_dpath) if f.endswith(".xml")]
-
-        for file in source_files:
-
-            source_fpath           = os.path.join(source_dpath, file)
-            target_orig_fpath    = os.path.join(target_orig_dpath, file.replace(".xml", f"_{locale}.xml"))
-            target_edit_fpath     = os.path.join(target_edit_dpath, file.replace(".xml", f"_{locale}.xml"))
-
-            if not os.path.exists(target_orig_fpath) or not os.path.exists(target_edit_fpath):
+    for elem in soup.recursiveChildGenerator():
+        if elem.name is None:  # text node
+            text = elem.string
+            if not text or text.strip() == "":
                 continue
 
-            source_strings         = get_key_label_pairs(source_fpath)
-            target_orig_strings = get_key_label_pairs(target_orig_fpath)
-            target_edit_strings = get_key_label_pairs(target_edit_fpath)
+            parent = elem.parent.name if elem.parent else None
 
-            # shall we check that keys are unique?
+            if parent == "del":
+                runs.append({
+                    "text": text,
+                    "strike": True,
+                    "color": "FF0000"
+                })
+            elif parent == "ins":
+                runs.append({
+                    "text": text,
+                    "color": "00AA00"
+                    # underline not supported
+                })
+            else:
+                runs.append({"text": text})
+    return runs
+
+def make_rich_text(runs):
+    """Convert parsed runs into CellRichText. Only strike and color supported."""
+    rich = CellRichText()
+    for r in runs:
+        font = InlineFont(
+            color=r.get("color"),
+            strike=r.get("strike", False)
+        )
+        rich.append(TextBlock(
+            text=r["text"],
+            font=font
+        ))
+    return rich
+
+def apply_html_formatting_excel(xlsx_path, column_name="html_diff"):
+    """Apply <del> and <ins> formatting (strike/color only) to all sheets."""
+    wb = load_workbook(xlsx_path)
+    for ws in wb.worksheets:
+        # find column index
+        headers = [c.value for c in next(ws.iter_rows(min_row=1, max_row=1))]
+        if column_name not in headers:
+            continue
+        col_idx = headers.index(column_name) + 1
+
+        for row in ws.iter_rows(min_row=2, min_col=col_idx, max_col=col_idx):
+            cell = row[0]
+            val = cell.value
+            if not isinstance(val, str) or "<del>" not in val and "<ins>" not in val:
+                continue
+
+            runs = html_to_runs(val)
+            rich = make_rich_text(runs)
+            cell.value = rich
+
+    wb.save(xlsx_path)
+
+
+if __name__ != "__main__":
+    exit("This module is not meant to be imported")
+
+common_dpath = Path("/home/souto/Repos/acer/pisa_2025ms_translation_common")
+final_dpath = Path("/home/souto/Repos/acer/pisa_2025ms_translation_final")
+
+not_locales = ["ui-translations", ".git", "translations", "z-qq-keys"]
+locale_dpaths = final_dpath.glob("*/") # gebnerator
+locales = sorted([d.name for d in locale_dpaths if d.name not in not_locales])
+
+reports = {}
+
+for locale in locales:
+
+    target_locale_dpath = final_dpath / locale
+    edited_locale_dpath = final_dpath / "translations" / locale / "batch1"
+    
+    if not common_dpath.is_dir() or not target_locale_dpath.is_dir() or not edited_locale_dpath.is_dir():
+        continue
+
+    batch_dpaths = target_locale_dpath.glob("*") # generator
+    batches = sorted([d.name for d in batch_dpaths if d.is_dir()])
+
+    # get labels data outside of looping
+    labels_metadata = get_labels_metadata(common_dpath, batches)
+
+    for batch in batches:
+        print(f"=== {locale} / {batch} ===")
+
+        batch_dpath = target_locale_dpath / batch
+        target_fpaths = batch_dpath.glob("*") # generator
+        
+        source_dpath = common_dpath / "source" / batch
+
+        for target_fpath in target_fpaths:
+
+            base_fname = target_fpath.name.replace(f"_{locale}", "")
+            final_fpath = edited_locale_dpath / base_fname
+            source_fpath = common_dpath / "source" / batch / base_fname
+            
+            if not source_fpath.is_file() or not target_fpath.is_file() or not final_fpath.is_file():
+                continue
+
+            source_strings      = get_key_label_pairs(source_fpath)
+            target_orig_strings = get_key_label_pairs(target_fpath)
+            target_edit_strings = get_key_label_pairs(final_fpath)
+
+
             keys = source_strings.keys()
 
             dmp = dmp_module.diff_match_patch()
-            #diff = dmp.diff_main(target_orig_strings[key], target_edit_strings[key])
-            # Result: [(-1, "Hell"), (1, "G"), (0, "o"), (1, "odbye"), (0, " World.")]
-            # dmp.diff_cleanupSemantic(diff)
-            # Result: [(-1, "Hello"), (1, "Goodbye"), (0, " World.")]
-            #print(diff)
 
             result = [
-                {    "key": key,
+                {   "key": key,
                     "source_text": source_strings[key],
                     "target_orig": target_orig_strings[key],
                     "target_edit": target_edit_strings[key],
-                    "dmp_diff": dmp.diff_main(target_orig_strings[key], target_edit_strings[key]),
+                    # "dmp_diff": dmp.diff_main(target_orig_strings[key], target_edit_strings[key]),
                     "html_diff": diff(target_orig_strings[key], target_edit_strings[key]),
-                    "file": file
+                    "file": base_fname
                 }
                 for key in keys
                 if key in target_edit_strings.keys() and key in target_orig_strings.keys()
                 # add to results only if there has been a change
                 and target_orig_strings[key] != target_edit_strings[key]
-                # add to results only if the label is included for this locale
-                and is_included(batch, file, key, locale)
             ]
 
-            print(result)
+            if result:
+                if locale not in reports:
+                    reports[locale] = {}
+
+                reports[locale].update({batch: result})
+
+    if locale in reports:
+        reports_dir = Path("reports")
+        reports_dir.mkdir(exist_ok=True)
+        export_locale_to_excel(reports[locale], locale, output_path=reports_dir / f"{locale}_diff.xlsx")
+        apply_html_formatting_excel(reports_dir / f"{locale}_diff.xlsx")
+                
+
+
+# for locale, data in reports.items():
+#     export_locale_to_excel(data, locale, output_path=f"{locale}_diff.xlsx")
+#     apply_html_formatting_excel(f"{locale}_diff.xlsx")
+
+
