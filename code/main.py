@@ -16,7 +16,18 @@ from openpyxl.cell.text import InlineFont
 from bs4 import BeautifulSoup
 
 
-# constants
+def get_locale_counts(locale: str, data: Dict) -> Dict:
+    counts = {}
+    batches = ["01_COS_SCI-A_N", "02_COS_SCI-B_N", "03_COS_SCI-C_N", "04_QQS_N", "05_QQA_N", "06_COS_LDW_N", "07_COS_XYZ_N", "08_CGA_SCI_N", "11_COS_MAT-A_T", "12_COS_MAT-B_T", "13_COS_REA-A_T", "14_COS_REA-B_T", "15_COS_SCI-A_T", "16_COS_SCI-B_T"]
+    for batch in batches:
+        counts[batch] = len(data[batch]) if batch in data else 0
+
+    return {
+        "locale": locale,
+        "total": sum(counts.values()),
+        **counts
+    }
+
 
 def export_locale_to_excel(data: Dict, locale: str, output_path: str = None):
     if output_path is None:
@@ -244,6 +255,9 @@ locale_dpaths = final_dpath.glob("*/") # gebnerator
 locales = sorted([d.name for d in locale_dpaths if d.name not in not_locales])
 
 reports = {}
+reports_dir = Path("reports")
+reports_dir.mkdir(exist_ok=True)
+aggregate_data = []
 
 for locale in locales:
 
@@ -307,8 +321,10 @@ for locale in locales:
                 reports[locale].update({batch: result})
 
     if locale in reports:
-        reports_dir = Path("reports")
-        reports_dir.mkdir(exist_ok=True)
+
+        data = get_locale_counts(locale, reports[locale])
+        aggregate_data.append(data)
+
         export_locale_to_excel(reports[locale], locale, output_path=reports_dir / f"{locale}_diff.xlsx")
         apply_html_formatting_excel(reports_dir / f"{locale}_diff.xlsx")
                 
@@ -319,3 +335,6 @@ for locale in locales:
 #     apply_html_formatting_excel(f"{locale}_diff.xlsx")
 
 
+totals_df = pd.DataFrame(aggregate_data)
+totals_df.to_excel(reports_dir / "_diff_totals.xlsx", index=False)
+print("Saved: _diff_totals.xlsx")
